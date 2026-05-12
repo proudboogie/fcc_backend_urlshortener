@@ -18,19 +18,21 @@ app.get('/', function(req, res) {
 });
 
 var url = [];
-var original_url;
-var short_url;
 
 
 // 1. POST a URL to /api/shorturl, and get a JSON response with original_url and short_url properties
 app.post('/api/shorturl', function (req,res){
   // recover url is in req.body.url (input type='text' name='url')
-  url.push(req.body.url)
-  // array.indexOf("arrayValue") --> will return value position
-  console.log(url+" : "+url.length);
 
-  original_url = url.find((value) => value == req.body.url);
-  short_url = url.indexOf(original_url);
+  // if url isn't stored yet 
+  if(!url.includes(req.body.url)){
+    url.push(req.body.url)
+  }
+  console.log(url+" : "+url.length);
+  
+  let original_url = url.find((value) => value == req.body.url);
+  // array.indexOf("arrayValue") --> will return value position
+  let short_url = url.indexOf(original_url);
 
   res.json({"original_url": original_url, "short_url":short_url})
 })
