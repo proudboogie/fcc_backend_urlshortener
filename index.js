@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose')
 // Basic Configuration
 const port = process.env.PORT || 3000;
 // Initialize bodyParser
@@ -11,6 +12,27 @@ app.use(bodyParser.urlencoded({extended:false}));
 app.use(cors());
 
 app.use('/public', express.static(`${process.cwd()}/public`));
+
+// MONGOOSE
+mongoose.connect(process.env.MONGO_URI, {dbName : "urlshortener"}).
+then(() => console.log('Successfully connected to MongoDB!')).
+catch( error => console.error(error));
+
+// Schema
+const urlSchema = new mongoose.Schema({
+  originalUrl : {
+    type : String,
+    required : true
+  },
+  shortUrl : {
+    type: Number,
+    required : true,
+  }
+
+});
+
+// model
+const Url = mongoose.model('Url', urlSchema);
 
 app.get('/', function(req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
@@ -22,24 +44,22 @@ var url = [];
 
 // 1. POST a URL to /api/shorturl, and get a JSON response with original_url and short_url properties
 app.post('/api/shorturl', function (req,res){
-  // recover url is in req.body.url (input type='text' name='url')
+  const newUrl = req.body.url;
   
-  // check http:// OR https:// use
-  if(req.body.url.startsWith("https://") || req.body.url.startsWith("http://")){
+  if(newUrl.startsWith("https://") || newUrl.startsWith("http://")){
 
-    // If url is not stored yet add new url
-    if(!url.includes(req.body.url)){
-      url.push(req.body.url)
+    if(!url.includes(newUrl)){
+      url.push(newUrl)
     }
+    
     // array.find(function) will return the first matching value
-    let originalUrl = url.find((value) => value == req.body.url);
+    let originalUrl = url.find((value) => value == newUrl);
     
     // array.indexOf("arrayValue") --> will return value position
     let shortUrl = url.indexOf(originalUrl);
 
     res.json({"original_url": originalUrl, "short_url":shortUrl})
 
-    //console.log('POST URL','\n', 'req.body: ',req.body, '\n', 'req.params: ', req.params, '\n', {"original_url": original_url, "short_url":short_url})
   }
   // 3. If entered URL is invalid return JSON error response
   else{
@@ -59,7 +79,6 @@ app.get('/api/shorturl/:short_url', function(req,res){
     res.json({error:'there is no short URL for that input'})
   }
   
-  //console.log('GET URL','\n', 'req.body: ',req.body, '\n', 'req.params: ', req.params, '\n', 'redirecting to :',original_url ,' with: ',req.params.short_url)
 })
 
 
