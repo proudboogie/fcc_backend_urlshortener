@@ -22,7 +22,8 @@ catch( error => console.error(error));
 const urlSchema = new mongoose.Schema({
   originalUrl : {
     type : String,
-    required : true
+    required : true,
+    unique : true
   },
   shortUrl : {
     type: Number,
@@ -34,32 +35,28 @@ const urlSchema = new mongoose.Schema({
 // model
 const Url = mongoose.model('Url', urlSchema);
 
+
 app.get('/', function(req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
-
-
-var url = [];
-
 // 1. POST a URL to /api/shorturl, and get a JSON response with original_url and short_url properties
-app.post('/api/shorturl', function (req,res){
+app.post('/api/shorturl', async function (req,res){
   const newUrl = req.body.url;
-  
+  var matchUrl = await Url.findOne({ originalUrl : newUrl });
+  const count = await Url.countDocuments();
+
   if(newUrl.startsWith("https://") || newUrl.startsWith("http://")){
 
-    if(!url.includes(newUrl)){
-      url.push(newUrl)
+    // buscar entradas similares, y añadir
+    if(!matchUrl){
+      // new entry
+      let insertUrl = new Url({ originalUrl : newUrl, shortUrl : count});
+      await insertUrl.save();
+      matchUrl = insertUrl;
     }
-    
-    // array.find(function) will return the first matching value
-    let originalUrl = url.find((value) => value == newUrl);
-    
-    // array.indexOf("arrayValue") --> will return value position
-    let shortUrl = url.indexOf(originalUrl);
 
-    res.json({"original_url": originalUrl, "short_url":shortUrl})
-
+    res.json({"original_url": matchUrl.originalUrl, "short_url":matchUrl.shortUrl})
   }
   // 3. If entered URL is invalid return JSON error response
   else{
@@ -69,11 +66,12 @@ app.post('/api/shorturl', function (req,res){
 })
 
 // 2. When visiting /api/shorturl/<short_url> --> redirect to original URL
-app.get('/api/shorturl/:short_url', function(req,res){
-  let original_url = url[req.params.short_url];
+app.get('/api/shorturl/:short_url', async function(req,res){
+  const requestUrl = req.params.short_url;
+  const resultUrl = await Url.findOne({shortUrl : requestUrl},'originalUrl -_id');
 
-  if(original_url){
-    res.redirect(original_url);
+  if(resultUrl){
+    res.redirect(resultUrl.originalUrl);
   }
   else{
     res.json({error:'there is no short URL for that input'})
